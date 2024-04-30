@@ -1,9 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-
-export interface Pokemon {
-  name: string;
-  url: string;
-}
+import { Question, QuizState, UserAnswer } from "../../types";
 
 export const fetchPokemons = createAsyncThunk(
   "quiz/fetchPokemons",
@@ -13,17 +9,6 @@ export const fetchPokemons = createAsyncThunk(
     return data.results;
   },
 );
-
-interface QuizState {
-  questions: {
-    questionText: string;
-    answerOptions: { answerText: string; isCorrect: boolean }[];
-  }[];
-  answers: (number | null)[];
-  pokemons: Pokemon[];
-  status: "idle" | "loading" | "succeeded" | "failed";
-  error: string | null;
-}
 
 const initialState: QuizState = {
   questions: [],
@@ -37,37 +22,25 @@ export const quizSlice = createSlice({
   name: "quiz",
   initialState,
   reducers: {
-    addQuestion: (
-      state,
-      action: PayloadAction<{
-        questionText: string;
-        answerOptions: { answerText: string; isCorrect: boolean }[];
-      }>,
-    ) => {
+    addQuestion: (state, action: PayloadAction<Question>) => {
       state.questions.push(action.payload);
-      state.answers.push(null); // Initialize selected answers to null for each question
+      state.answers = [];
     },
-    deleteQuestion: (state, action: PayloadAction<number>) => {
-      state.questions.splice(action.payload, 1);
-      state.answers.splice(action.payload, 1); // Remove corresponding selected answer
+    addAnswer: (state, action: PayloadAction<UserAnswer>) => {
+      state.answers.push(action.payload);
     },
     updateQuestion: (
       state,
       action: PayloadAction<{
-        index: number;
-        updatedQuestion: {
-          questionText: string;
-          answerOptions: { answerText: string; isCorrect: boolean }[];
-        };
+        questionIdx: number;
+        updatedQuestion: Question;
       }>,
     ) => {
-      state.questions[action.payload.index] = action.payload.updatedQuestion;
+      state.questions[action.payload.questionIdx] =
+        action.payload.updatedQuestion;
     },
-    selectAnswer: (
-      state,
-      action: PayloadAction<{ questionIndex: number; answerIndex: number }>,
-    ) => {
-      state.answers[action.payload.questionIndex] = action.payload.answerIndex;
+    deleteQuestion: (state, action: PayloadAction<number>) => {
+      state.questions.splice(action.payload, 1);
     },
     getAllQuestions: (state, action: PayloadAction<void>) => state,
   },
@@ -88,9 +61,9 @@ export const quizSlice = createSlice({
 
 export const {
   addQuestion,
-  deleteQuestion,
+  addAnswer,
   updateQuestion,
-  selectAnswer,
+  deleteQuestion,
   getAllQuestions,
 } = quizSlice.actions;
 export default quizSlice.reducer;

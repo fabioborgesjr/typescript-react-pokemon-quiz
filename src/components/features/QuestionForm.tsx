@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Section, Input, Select, Button, Label } from '../styled/FormStyles';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addQuestion } from '../../features/quiz/quizSlice';
-import { fetchPokemons, Pokemon } from '../../features/quiz/quizSlice';
+import { addQuestion, updateQuestion } from '../../features/quiz/quizSlice';
+import { fetchPokemons } from '../../features/quiz/quizSlice';
 import { Modal } from '../modal';
 import { CheckboxContainer, CheckboxInput, CheckboxLabel } from '../styled/FormStyles';
+import { Pokemon, Question, QuestionFormProps } from '../../types';
 
-interface AddQuestionFormProps {
-    isOpen: boolean;
-    onClose: () => void;
+
+
+const getPokemonOptionsFromQuestion = (options: any[]): Pokemon[] => {
+    return options.map(({ option: pokemon }) => pokemon)
 }
 
-export const AddQuestionForm: React.FC<AddQuestionFormProps> = ({ isOpen, onClose }) => {
-    const [questionText, setQuestionText] = useState<string>('');
-    const [correctOption, setCorrectOption] = useState<Pokemon | null>(null);
-    const [options, setOptions] = useState<Pokemon[]>([]);
-    const [numOptionsAdded, setNumOptionsAdded] = useState<number>(0);
+const getCorrectPokemonFromQuestion = (options: any[]): Pokemon => {
+    return options.filter((option) => option.isCorrect)[0].option
+}
+
+export const QuestionForm: React.FC<QuestionFormProps> = ({ isOpen, onClose, question, questionIdx }) => {
+    const [questionText, setQuestionText] = useState<string>(question?.questionText ?? '');
+    const [correctOption, setCorrectOption] = useState<Pokemon | null>(question?.answerOptions ? getCorrectPokemonFromQuestion(question.answerOptions) : null);
+    const [options, setOptions] = useState<Pokemon[]>(question?.answerOptions ? getPokemonOptionsFromQuestion(question?.answerOptions) : []);
+    const [numOptionsAdded, setNumOptionsAdded] = useState<number>(question?.answerOptions?.length ?? 0);
     const dispatch = useAppDispatch();
     const pokemons = useAppSelector((state) => state.quiz.pokemons);
 
-    useEffect(() => {
-        dispatch(fetchPokemons());
-    }, [dispatch]);
+    console.log({ correctOption, numOptionsAdded, options, question })
 
     const handleAddOption = () => {
         if (numOptionsAdded < 3) {
@@ -50,11 +54,22 @@ export const AddQuestionForm: React.FC<AddQuestionFormProps> = ({ isOpen, onClos
 
     const handleAddQuestion = () => {
         if (options.length === 3) {
-            const question = {
+            const question: Question = {
                 questionText,
-                answerOptions: options.map((option) => ({ answerText: option.name, isCorrect: option.name === correctOption?.name })),
+                answerOptions: options.map((option) => ({ option, isCorrect: option.name === correctOption?.name })),
             };
             dispatch(addQuestion(question));
+            handleModalClose()
+        }
+    };
+
+    const handleUpdateQuestion = () => {
+        if (options.length === 3 && questionIdx !== undefined) {
+            const updatedQuestion: Question = {
+                questionText,
+                answerOptions: options.map((option) => ({ option, isCorrect: option.name === correctOption?.name })),
+            };
+            dispatch(updateQuestion({ questionIdx, updatedQuestion }));
             handleModalClose()
         }
     };
@@ -76,8 +91,9 @@ export const AddQuestionForm: React.FC<AddQuestionFormProps> = ({ isOpen, onClos
     return (
         <Modal isOpen={isOpen} onClose={handleModalClose}>
             <Section>
-                <Label htmlFor="question">New question to add:</Label>
-                <Input type="text" value={questionText} onChange={(e) => setQuestionText(e.target.value)} placeholder='Your question sentence should have at least 10 characters' />
+                <h1>Add question</h1>
+                <Label htmlFor="question">Question sentence:</Label>
+                <Input id='question' type="text" value={questionText} onChange={(e) => setQuestionText(e.target.value)} placeholder='What is the strongest Pokemon?' />
 
                 <Label htmlFor="question">Answer options:</Label>
 
@@ -107,7 +123,7 @@ export const AddQuestionForm: React.FC<AddQuestionFormProps> = ({ isOpen, onClos
                     </div>
                 ))}
 
-                <Button onClick={handleAddQuestion} disabled={numOptionsAdded !== 3 || questionText.length < 10} style={{ marginTop: "1rem" }}>Save Question</Button>
+                <Button onClick={question ? handleUpdateQuestion : handleAddQuestion} disabled={numOptionsAdded !== 3 || questionText.length < 10 || !correctOption} style={{ marginTop: "1rem" }}>Save Question</Button>
             </Section>
         </Modal>
     );
